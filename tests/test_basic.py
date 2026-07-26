@@ -128,6 +128,26 @@ def test_llm_preserves_fetched_blogger_identity():
     assert merged["title"] == "Improved title"
 
 
+def test_new_post_publishes_when_insert_response_has_no_status(monkeypatch):
+    article = {
+        "title": "New post",
+        "content": "Body",
+        "labels": ["lang:nl"],
+        "source_path": "content/nl/projects/new-post.md",
+    }
+    publish = MagicMock(return_value={"id": "123", "status": "LIVE"})
+
+    monkeypatch.setattr(blogger, "get_blog_id", lambda config: "blog")
+    monkeypatch.setattr(blogger, "insert_post", lambda *args: {"id": "123", "url": "https://example.test"})
+    monkeypatch.setattr(blogger, "publish_post", publish)
+    monkeypatch.setattr(blogger.utils, "write_post_id_back", lambda *args: None)
+
+    result = blogger.update_article_on_blogger({}, article, draft=False)
+
+    publish.assert_called_once_with("blog", "123")
+    assert result["status"] == "LIVE"
+
+
 def test_mermaid_blocks_are_detected():
     blocks = convert.find_mermaid_blocks("""# Diagram
 

@@ -128,6 +128,7 @@ def update_article_on_blogger(
     labels = article.get("labels", [])
 
     post_id = article.get("blogger_post_id")
+    is_new_post = not post_id
 
     # Build rich body for patch/update
     body = {
@@ -151,8 +152,10 @@ def update_article_on_blogger(
         # write back
         utils.write_post_id_back(article["source_path"], post["id"], post.get("url", ""))
 
-    if not draft and post.get("status") == "DRAFT":
-        publish_post(blog_id, post["id"])
+    # Blogger insert responses commonly omit admin-only status. A newly inserted
+    # post was explicitly created as a draft, so publish it when requested.
+    if not draft and (is_new_post or post.get("status") == "DRAFT"):
+        post = publish_post(blog_id, post["id"])
 
     return post
 

@@ -1,6 +1,8 @@
 ---
+blogger_post_id: '8865767390920424414'
+blogger_url: https://www.hexnut.net/
 date: 2026-07-26
-draft: true
+draft: false
 keywords:
 - AI agent
 - blog
