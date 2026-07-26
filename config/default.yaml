@@ -1,0 +1,17 @@
+blog:
+  # url: "https://hexnut2.blogger.com"   # change to your blog URL; tool uses getByUrl
+  blog_id: "3644989973877011191"        # optional: hardcode if getByUrl fails
+
+github:
+  user: "chat-l18l"
+  repo: "hexnut-blog-tool"    # for rewriting image URLs to raw.githubusercontent.com
+
+llm:
+  provider: "xai"             # xai | openai | ollama (future)
+  model: "grok-beta"
+  # base_url: "https://api.x.ai/v1"  # if needed
+
+paths:
+  content_dir: "content"
+  assets_dir: "assets"
+  template_dir: "templates"

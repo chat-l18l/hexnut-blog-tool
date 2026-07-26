@@ -1,0 +1,12 @@
+google-api-python-client
+google-auth-oauthlib
+google-auth-httplib2
+python-frontmatter
+markdown[extra]
+jinja2
+typer[all]
+pyyaml
+requests
+pytest
+openai  # for xAI/Grok (OpenAI-compatible)
+markdownify  # for HTML -> Markdown roundtrip on fetch

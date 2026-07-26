@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtualenv
+.venv/
+venv/
+ENV/
+env/
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+*.pem
+client_secrets.json*
+.token.json
+token.json
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Project specific
+rendered/
+*.rendered.md
+*.html
+blogger_*.json
+
+# npm / mermaid
+node_modules/
+package-lock.json
+package.json
+
+# Mermaid temp
+*.mmd.tmp
