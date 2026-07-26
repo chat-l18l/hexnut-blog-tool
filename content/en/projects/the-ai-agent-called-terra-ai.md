@@ -1,4 +1,6 @@
 ---
+blogger_post_id: '4378905749742223667'
+blogger_url: https://www.hexnut.net/
 date: 2026-07-26
 draft: false
 keywords:
