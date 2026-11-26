@@ -126,7 +126,9 @@ Belangrijk:
 - Images: relatieve paden → https://raw.githubusercontent.com/.../main/...
 - Na eerste publish of fetch: `blogger_post_id` + `blogger_published`, `labels`, etc. in frontmatter
 - Updates (via --path of publish) gebruiken altijd dezelfde ID via patch → statistieken blijven intact
-- Labels in Blogger = tags + keywords + lang:en|nl
+- Labels in Blogger = alleen de `tags` uit de frontmatter. Blogger toont elk label publiek onder de post, dus `keywords`, `lang` en `slug` gaan er niet meer in.
+- `lang` en `slug` gaan mee als onzichtbaar HTML-commentaar bovenaan de post (`<!-- hexnut lang=nl slug=... -->`); `fetch` leest dat terug. Oudere posts met `lang:`-labels worden nog herkend, en `kw:`/`lang:`/`slug:`-labels worden bij `fetch` weggefilterd zodat een volgende `publish` ze opruimt.
+- Controle: `pytest -q tests` (verwacht: alle tests groen, o.a. `test_keywords_do_not_become_labels` en `test_meta_comment_round_trip`).
 - Roundtrip: fetch → MD (markdownify) → bewerk (LLM/build) → update (HTML terug)
 
 
