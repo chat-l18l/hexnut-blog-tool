@@ -125,7 +125,7 @@ def process_article(md_path: Path, config: dict, dry_run: bool = False) -> dict:
     tmpl = env.get_template("post.html.j2")
     full_html = tmpl.render(title=article.get("title", ""), content=html_body)
 
-    article["html"] = html_body   # the part we send to Blogger
+    article["html"] = utils.meta_comment(article, lang) + "\n" + html_body   # the part we send to Blogger
     article["full_preview_html"] = full_html
     article["labels"] = utils.build_labels(article, lang)
     article["rendered_diagrams"] = rendered_diagrams
@@ -179,7 +179,8 @@ def post_to_article(post: dict) -> dict:
     Includes blogger_* fields for ID preservation and editable metadata.
     """
     content_html = post.get("content", "") or ""
-    md_body = html_to_md(content_html)
+    marker = utils.parse_meta_comment(content_html)
+    md_body = html_to_md(utils.strip_meta_comment(content_html))
 
     meta = {
         "title": post.get("title", "Untitled"),
@@ -204,15 +205,18 @@ def post_to_article(post: dict) -> dict:
         slug = re.sub(r'[^a-z0-9]+', '-', slug).strip('-')
         meta["slug"] = slug or post.get("id", "post")
 
-    # lang hint from labels
-    for label in meta.get("labels", []):
-        if label.startswith("lang:"):
-            meta["lang"] = label.split(":", 1)[1]
-            break
+    # lang/slug from the invisible marker, else legacy lang: labels
+    if marker.get("slug"):
+        meta["slug"] = marker["slug"]
+    lang = utils.lang_from_post(post)
+    if lang:
+        meta["lang"] = lang
     meta.setdefault("lang", "en")
+    # internal labels are not public tags; never carry them back into frontmatter
+    meta["labels"] = [l for l in meta["labels"] if not l.startswith(utils.INTERNAL_LABEL_PREFIXES)]
 
-    # title_nl if we detect a nl label or similar (leave for user)
-    if any(l.startswith("lang:nl") for l in meta.get("labels", [])):
+    # title_nl if the post is Dutch (leave for user)
+    if meta["lang"] == "nl":
         meta.setdefault("title_nl", meta["title"])
 
     article = meta.copy()

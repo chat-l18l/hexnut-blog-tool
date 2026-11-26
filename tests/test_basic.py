@@ -18,8 +18,7 @@ body
 """)
     art = utils.load_article(md)
     labels = utils.build_labels(art, "en")
-    assert "a" in labels
-    assert "lang:en" in labels
+    assert labels == ["a"]  # lang/slug/kw are never public labels
 
 def test_build_index_and_checks(tmp_path, monkeypatch):
     # minimal fake content
@@ -72,9 +71,32 @@ body
 """)
     art = utils.load_article(md)
     labs = utils.build_labels(art, "en")
-    assert "foo" in labs
-    assert "lang:en" in labs
-    assert any("slug:" in l for l in labs)
+    assert labs == ["foo"]  # legacy internal labels are dropped on republish
+
+
+def test_keywords_do_not_become_labels(tmp_path):
+    md = tmp_path / "k.md"
+    md.write_text("---\ntitle: K\nslug: k\nlang: nl\ntags: [AI]\nkeywords: [Git]\n---\nbody\n")
+    art = utils.load_article(md)
+    assert utils.build_labels(art, "nl") == ["AI"]
+
+
+def test_meta_comment_round_trip():
+    from scripts import convert
+    html = utils.meta_comment({"slug": "mijn-post"}, "nl") + "\n<p>Hallo</p>"
+    post = {"id": "1", "title": "Mijn post", "content": html, "labels": ["AI"]}
+    art = convert.post_to_article(post)
+    assert art["lang"] == "nl"
+    assert art["slug"] == "mijn-post"
+    assert "hexnut" not in art["content"]
+    assert utils.lang_from_post(post) == "nl"
+
+
+def test_legacy_lang_label_still_detected():
+    post = {"content": "<p>x</p>", "labels": ["AI", "lang:nl", "kw:Git"]}
+    assert utils.lang_from_post(post) == "nl"
+    from scripts import convert
+    assert convert.post_to_article({"id": "2", "title": "Oud", **post})["labels"] == ["AI"]
 
 
 def test_list_posts_passes_filters_as_request_parameters():

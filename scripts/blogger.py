@@ -343,14 +343,7 @@ def fetch_post(post_id: str, lang: str | None = None, output: Path | None = None
     if output:
         target = output
     else:
-        use_lang = lang
-        if not use_lang:
-            # derive from labels
-            for lab in post.get("labels", []):
-                if lab.startswith("lang:"):
-                    use_lang = lab.split(":", 1)[1]
-                    break
-        use_lang = use_lang or "en"
+        use_lang = lang or utils.lang_from_post(post) or "en"
         sub = "projecten" if use_lang == "nl" else "projects"
         target_dir = content_dir / use_lang / sub
         target_dir.mkdir(parents=True, exist_ok=True)

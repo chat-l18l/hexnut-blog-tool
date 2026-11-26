@@ -5,6 +5,7 @@ What: Load/save yaml frontmatter, config, image url rewriting, post id writeback
 """
 
 from pathlib import Path
+import re
 import yaml
 import frontmatter
 from typing import Any
@@ -77,25 +78,87 @@ def github_raw_image_url(config: dict, rel_path: str) -> str:
     # assume path is relative like assets/images/...
     return f"https://raw.githubusercontent.com/{user}/{repo}/main/{rel_path}"
 
+# Blogger shows every label on the post and in the label widget; there is no
+# hidden-label syntax. These prefixes were used by older versions of this tool
+# and are never sent as labels any more.
+INTERNAL_LABEL_PREFIXES = ("kw:", "lang:", "slug:")
+_META_COMMENT_RE = re.compile(r"<!--\s*hexnut\s+(.*?)-->", re.S)
+
+
+def meta_comment(article: dict, lang: str) -> str:
+    """Invisible HTML marker carrying lang and slug inside the post body.
+
+    Why: fetch must recover lang/slug, but public labels are the wrong place.
+    What: returns e.g. '<!-- hexnut lang=nl slug=my-post -->'.
+    Pre: lang is a non-empty token; slug (if present) has no whitespace or '--'.
+    Post: parse_meta_comment(result) == {'lang': lang, 'slug': slug}.
+    """
+    assert lang and lang.isalnum(), f"invalid lang: {lang!r}"
+    parts = [f"lang={lang}"]
+    slug = article.get("slug")
+    if slug:
+        assert not re.search(r"\s|--", slug), f"slug cannot live in an HTML comment: {slug!r}"
+        parts.append(f"slug={slug}")
+    return f"<!-- hexnut {' '.join(parts)} -->"
+
+
+def parse_meta_comment(html: str) -> dict:
+    """Read the hexnut marker from post HTML.
+
+    Why/What: counterpart of meta_comment; returns {'lang': .., 'slug': ..}.
+    Pre: html is a string (None is treated as empty for fetched posts without content).
+    Post: {} when no marker is present.
+    """
+    m = _META_COMMENT_RE.search(html or "")
+    if not m:
+        return {}
+    return dict(kv.split("=", 1) for kv in m.group(1).split() if "=" in kv)
+
+
+def strip_meta_comment(html: str) -> str:
+    """Remove the first hexnut marker so it does not end up in the local Markdown."""
+    return _META_COMMENT_RE.sub("", html or "", count=1).lstrip()
+
+
+def lang_from_post(post: dict) -> str | None:
+    """Language of a fetched Blogger post.
+
+    Why: decide content/<lang>/ on fetch without relying on public labels.
+    What: marker first, then legacy 'lang:' labels for posts published before the marker.
+    Pre: post is a Blogger post dict.
+    Post: 'en', 'nl', ... or None when unknown (caller chooses the default).
+    """
+    assert isinstance(post, dict), "post must be a dict"
+    lang = parse_meta_comment(post.get("content", "")).get("lang")
+    if lang:
+        return lang
+    for lab in post.get("labels", []) or []:
+        if lab.startswith("lang:"):
+            return lab.split(":", 1)[1]
+    return None
+
+
 def build_labels(article: dict, lang: str) -> list[str]:
-    # Prefer explicit "labels" (from fetch or user) else fall back to tags/keywords
+    """Public Blogger labels for an article.
+
+    Why: labels are visible to readers, so only human topic tags belong there.
+    What: explicit 'labels' (from fetch/user) if present, else 'tags'; internal
+          kw:/lang:/slug: entries are dropped; order kept, duplicates removed.
+          lang/slug travel via meta_comment, keywords stay in the frontmatter.
+    Pre: article is a dict; lang is non-empty (kept for a stable call signature).
+    Post: no returned label starts with INTERNAL_LABEL_PREFIXES.
+    """
+    assert isinstance(article, dict), "article must be a dict"
+    assert lang, "lang is required"
     if "labels" in article and article["labels"]:
         base = list(article["labels"])
     else:
-        tags = article.get("tags", []) or []
-        keywords = article.get("keywords", []) or []
-        base = list(tags)
-        if keywords:
-            base.extend([f"kw:{k}" for k in keywords])
-    labels = base + [f"lang:{lang}"]
-    slug = article.get("slug")
-    if slug and not any(l.startswith("slug:") for l in labels):
-        labels.append(f"slug:{slug}")
-    # dedup while preserving order
-    seen = set()
-    out = []
-    for l in labels:
-        if l not in seen:
-            seen.add(l)
-            out.append(l)
+        base = list(article.get("tags", []) or [])
+    out: list[str] = []
+    seen: set[str] = set()
+    for label in base:
+        if label.startswith(INTERNAL_LABEL_PREFIXES) or label in seen:
+            continue
+        seen.add(label)
+        out.append(label)
     return out
