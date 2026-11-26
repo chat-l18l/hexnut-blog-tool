@@ -117,8 +117,11 @@ def process_article(md_path: Path, config: dict, dry_run: bool = False) -> dict:
     refs = article.get("references", [])
     md = append_references(md, refs)
 
-    # 4. Convert to HTML
+    # 4. Convert to HTML (+ series footer, generated so it never lives in the Markdown)
     html_body = md_to_html(md)
+    series_key = article.get("series")
+    if series_key:
+        html_body += "\n" + utils.series_footer_html(config, series_key, lang)
 
     # 5. Wrap in template for preview
     env = Environment(loader=FileSystemLoader("templates"))
@@ -128,6 +131,10 @@ def process_article(md_path: Path, config: dict, dry_run: bool = False) -> dict:
     article["html"] = utils.meta_comment(article, lang) + "\n" + html_body   # the part we send to Blogger
     article["full_preview_html"] = full_html
     article["labels"] = utils.build_labels(article, lang)
+    if series_key:
+        series_label = utils.series_info(config, series_key, lang)["label"]
+        if series_label not in article["labels"]:
+            article["labels"].append(series_label)
     article["rendered_diagrams"] = rendered_diagrams
 
     # Write preview if not dry
@@ -174,13 +181,14 @@ def html_to_md(html: str) -> str:
     return md
 
 
-def post_to_article(post: dict) -> dict:
+def post_to_article(post: dict, config: dict | None = None) -> dict:
     """Convert a raw Blogger post dict into a dict ready for local MD + frontmatter.
     Includes blogger_* fields for ID preservation and editable metadata.
     """
     content_html = post.get("content", "") or ""
     marker = utils.parse_meta_comment(content_html)
-    md_body = html_to_md(utils.strip_meta_comment(content_html))
+    body_html, series_label = utils.strip_series_footer(utils.strip_meta_comment(content_html))
+    md_body = html_to_md(body_html)
 
     meta = {
         "title": post.get("title", "Untitled"),
@@ -212,6 +220,11 @@ def post_to_article(post: dict) -> dict:
     if lang:
         meta["lang"] = lang
     meta.setdefault("lang", "en")
+    # series: footer was generated from config, so store the key, not the text
+    if series_label and config is not None:
+        key = utils.series_key_for_label(config, series_label)
+        if key:
+            meta["series"] = key
     # internal labels are not public tags; never carry them back into frontmatter
     meta["labels"] = [l for l in meta["labels"] if not l.startswith(utils.INTERNAL_LABEL_PREFIXES)]
 
@@ -229,7 +242,7 @@ def build_article_from_post(post: dict, target_path: Path, config: dict) -> dict
     """High level: take fetched post, write it as local MD file with rich meta.
     Returns the article dict.
     """
-    article = post_to_article(post)
+    article = post_to_article(post, config)
     # Write using utils (preserves other frontmatter if file existed)
     content = article.pop("content")
     # merge any existing on disk

@@ -198,3 +198,45 @@ def test_mermaid_renderer_uses_puppeteer_config(tmp_path, monkeypatch):
     assert "-p" in command
     assert "config/puppeteer.json" in command
     assert command[command.index("-o") + 1] == str(output)
+
+
+SERIES_CONFIG = {
+    "blog": {"public_url": "https://www.hexnut.net/"},
+    "series": {"ai-agents": {
+        "nl": {"label": "Bouwen met AI-agents", "blurb": "projecten die ik samen met AI-agents bouw"},
+        "en": {"label": "Building with AI agents", "blurb": "projects I build together with AI agents"},
+    }},
+}
+
+
+def test_series_footer_links_to_label_page():
+    footer = utils.series_footer_html(SERIES_CONFIG, "ai-agents", "nl")
+    assert 'data-series="Bouwen met AI-agents"' in footer
+    assert 'href="https://www.hexnut.net/search/label/Bouwen%20met%20AI-agents"' in footer
+    assert footer.count("<a ") == 1
+
+
+def test_series_footer_matches_live_posts():
+    # Exact markup that is live on hexnut.net; keeps tool output and live posts identical.
+    expected = ('<div class="hexnut-series" data-series="Building with AI agents"><p><em>This article is part of '
+                'the series <a href="https://www.hexnut.net/search/label/Building%20with%20AI%20agents">Building '
+                'with AI agents</a>: projects I build together with AI agents. That link takes you to every part '
+                'of the series, including new ones.</em></p></div>')
+    assert utils.series_footer_html(SERIES_CONFIG, "ai-agents", "en") == expected
+
+
+def test_unknown_series_fails_fast():
+    import pytest
+    with pytest.raises(AssertionError):
+        utils.series_footer_html(SERIES_CONFIG, "nope", "nl")
+
+
+def test_fetch_strips_series_footer_and_restores_key():
+    from scripts import convert
+    html = (utils.meta_comment({"slug": "x"}, "nl") + "\n<p>Tekst</p>\n"
+            + utils.series_footer_html(SERIES_CONFIG, "ai-agents", "nl"))
+    post = {"id": "3", "title": "X", "content": html, "labels": ["AI", "Bouwen met AI-agents"]}
+    art = convert.post_to_article(post, SERIES_CONFIG)
+    assert art["series"] == "ai-agents"
+    assert "hoort bij de serie" not in art["content"]
+    assert "Tekst" in art["content"]
