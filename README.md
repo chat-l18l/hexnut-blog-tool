@@ -101,6 +101,23 @@ python -m scripts publish --path content/en/.../xxx.md --dry-run
 python -m scripts publish --path content/en/.../xxx.md --draft
 ```
 
+## Series (projectreeksen)
+
+Een serie definieer je één keer in `config/default.yaml` onder `series:` (label + korte omschrijving per taal). Een post doet mee met één regel in de frontmatter:
+
+```yaml
+series: ai-agents
+```
+
+Bij `build`/`publish` gebeurt dan automatisch:
+- het serie-label (bijv. `Bouwen met AI-agents` / `Building with AI agents`) komt bij de labels;
+- onderaan de post komt een voettekst met een link naar de labelpagina (`https://www.hexnut.net/search/label/...`). Blogger houdt die pagina zelf actueel, dus oude delen verwijzen ook naar nieuwe delen zonder dat je ze hoeft aan te passen;
+- `fetch` haalt de voettekst weer weg en zet `series: <key>` terug in de frontmatter, zodat er bij een volgende publish geen dubbele voettekst ontstaat.
+
+Nieuwe serie: voeg een blok toe onder `series:`. Nieuw project in een bestaande serie: alleen `series: <key>` in de frontmatter van de NL- en EN-versie.
+
+Controle: `pytest -q tests` (o.a. `test_series_footer_matches_live_posts`) en een dry-run build van een post met `series:` toont het label en de voettekst.
+
 ## Kleine terminal-interface
 
 Voor de normale live-posts is er een kleine interactieve menu-flow:

@@ -1,6 +1,19 @@
 blog:
   # url: "https://hexnut2.blogger.com"   # change to your blog URL; tool uses getByUrl
   blog_id: "3644989973877011191"        # optional: hardcode if getByUrl fails
+  public_url: "https://www.hexnut.net"  # used for links to label pages (series)
+
+# Series: define once, then put `series: <key>` in a post's frontmatter.
+# The label is a normal public Blogger label; its label page lists every part,
+# so older posts point to newer ones without being edited.
+series:
+  ai-agents:
+    nl:
+      label: "Bouwen met AI-agents"
+      blurb: "projecten die ik samen met AI-agents bouw"
+    en:
+      label: "Building with AI agents"
+      blurb: "projects I build together with AI agents"
 
 github:
   user: "chat-l18l"
